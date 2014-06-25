@@ -21,6 +21,7 @@ namespace Doctrine\ORM\Tools;
 
 use Doctrine\Common\ClassLoader;
 use Doctrine\Common\Cache\Cache;
+use Doctrine\Common\Cache\CacheProvider;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Mapping\Driver\XmlDriver;
@@ -122,29 +123,30 @@ class Setup
     {
         $proxyDir = $proxyDir ?: sys_get_temp_dir();
 
-        if ($isDevMode === false && $cache === null) {
-            if (extension_loaded('apc')) {
-                $cache = new \Doctrine\Common\Cache\ApcCache();
-            } elseif (extension_loaded('xcache')) {
-                $cache = new \Doctrine\Common\Cache\XcacheCache();
-            } elseif (extension_loaded('memcache')) {
-                $memcache = new \Memcache();
-                $memcache->connect('127.0.0.1');
-                $cache = new \Doctrine\Common\Cache\MemcacheCache();
-                $cache->setMemcache($memcache);
-            } elseif (extension_loaded('redis')) {
-                $redis = new \Redis();
-                $redis->connect('127.0.0.1');
-                $cache = new \Doctrine\Common\Cache\RedisCache();
-                $cache->setRedis($redis);
+        if ($cache === null) {
+            if ($isDevMode === false) {
+                if (extension_loaded('apc')) {
+                    $cache = new \Doctrine\Common\Cache\ApcCache();
+                } elseif (extension_loaded('xcache')) {
+                    $cache = new \Doctrine\Common\Cache\XcacheCache();
+                } elseif (extension_loaded('memcache')) {
+                    $memcache = new \Memcache();
+                    $memcache->connect('127.0.0.1');
+                    $cache = new \Doctrine\Common\Cache\MemcacheCache();
+                    $cache->setMemcache($memcache);
+                } elseif (extension_loaded('redis')) {
+                    $redis = new \Redis();
+                    $redis->connect('127.0.0.1');
+                    $cache = new \Doctrine\Common\Cache\RedisCache();
+                    $cache->setRedis($redis);
+                } else {
+                    $cache = new ArrayCache();
+                }
             } else {
                 $cache = new ArrayCache();
             }
-        } elseif ($cache === null) {
-            $cache = new ArrayCache();
+            $cache->setNamespace("dc2_" . md5($proxyDir) . "_"); // to avoid collisions
         }
-
-        $cache->setNamespace("dc2_" . md5($proxyDir) . "_"); // to avoid collisions
 
         $config = new Configuration();
         $config->setMetadataCacheImpl($cache);
